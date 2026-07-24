@@ -32,10 +32,20 @@ else:
     exit('Can\'t patch @0x8226')
 
 
+# Patch ATA command dispatch table - Redirect command 0xC0 to our custom handler
+# Dispatch table is at 0x9482, each entry is 3 bytes (<2-byte handler address> <1-byte command>)
+# We'll replace command 0xC0 with 0x8E and point it to our custom handler at 0xB040
+# Command 0xC0 slot is at offset 0x950F
+bin[0x950F:0x950F+3] = b'\xb0\x40\x8e'
+
 
 # Insert our custom code inside empty area at @0xB000
 code=open('ident_checksum.bin','rb').read()
 bin[0xB000:0xB000+len(code)] = code
+
+# Insert our ATA command 0x8E handler inside empty area at @0xB040
+code=open('ata_c_sce_security_control.bin','rb').read()
+bin[0xB040:0xB040+len(code)] = code
 
 
 # Fix checksums
