@@ -1,52 +1,134 @@
-; Custom handler for ATA command 0x8E (ATA_C_SCE_SECURITY_CONTROL)
-
+; ATA_C_SCE_SECURITY_CONTROL implementation
 	.area CODE (ABS)
 	.org 0xB040        ; Place code at 0xB040
 
-ata_cmd_return_null_empty_sector:
-	; Call FUN_CODE_8062()
-	lcall	0x8062
+; Constants
+    wdtrst = 0xa6
+    wcon   = 0xa7
+    saddr  = 0xa9
+;
 
-	; 2e.6 = 0  (Clear bit 6 of 0x2e)
-	clr 0x76
+;
+; Custom handler for ATA command 0x8E (ATA_C_SCE_SECURITY_CONTROL)
+;
+ata_c_sce_security_control:
+    ; Read the next command byte
+    mov     r7,    #0x24
+    lcall   0x057e
+    mov     a,     0xa4
 
-	; DAT_EXTMEM_200b |= 0x10  (Set bit 4 of extmem location 0x200b)
-	mov	dptr, #0x200b
-	movx	a, @dptr
-	orl	a, #0x10
-	movx	@dptr, a
+    ; If 0xEC, call ata_sce_identify_drive
+    cjne    a,     #0xec,   unimplemented
+    lcall   ata_sce_identify_drive
+    ret
 
-	; memset(DAT_EXTMEM_4000, 0, 512)
-	; Set DPTR to 0x4000
-	mov	dph, #0x40
-	mov	dpl, #0x00
-	; Loop 512 times to write zeros
-	mov	r0, #0x02	; Counter high byte (2)
-	mov	r1, #0x00	; Counter low byte (0)
-	mov	a, #0x00	; Value to write
-clear_loop:
-	movx	@dptr, a
-	inc	dptr
-	djnz	r1, clear_loop
-	djnz	r0, clear_loop
+unimplemented:
+    ; Else, call the default command handler (unimplemented command) and return
+    lcall   0x83a2
+    ret
 
-	; DAT_SFR_aa = 0
-	mov	0xaa, #0x00
+;
+; ATA_SCE_IDENTIFY_DRIVE (0xEC) subcommand handler
+;
+ata_sce_identify_drive:
+    ; Replicate the original IDENTIFY handler behavior
+    ; Setup registers for command handling
+    clr     0x6c            ; 2d.4 = 0
+    lcall   0x05df
+                            ; 2d.3 = 2b.1 & 0x1
+    mov     c,     0x59
+    mov     0x6b,  c
+    lcall   0x2015
 
-	; if (28.2 != '\0') FUN_CODE_2728()
-	mov	a, 0x28
-	jz	skip_2728
-	lcall	0x2728
+    ; Prepare the data by copying from ROM 0xf000 to XRAM 0x4000
+    lcall   copy_hddid
+    clr     a
 
-skip_2728:
-	; FUN_CODE_26e7()
-	lcall	0x26e7
+    ; Setup the transfer
+	mov     0xa4,   a
+	mov     r7,    #0x20
+	lcall   0x0575
+	clr     a
 
-	; DAT_EXTMEM_200b &= 0xef  (Clear bit 4 of extmem location 0x200b)
-	mov	dptr, #0x200b
-	movx	a, @dptr
-	anl	a, #0xef
-	movx	@dptr, a
+	; Prepare PIO OUT (?)
+	mov     0xa5,   a
+	mov     0xa4,   a
+	mov     r7,     #0x28
+	lcall   0x0575
+	clr     a
+	mov     0xaa,   a
 
-	; Return
-	ret
+	; Set transfer data (?)
+	mov     saddr,  #0x02
+	mov     wcon,   a
+	mov     wdtrst, a
+	mov     0xa5,   a
+	mov     0xa4,   a
+	mov     r7,     #0x60
+	lcall   0x0575
+	clr     a
+
+	; Start the transfer
+	mov     0xa4,   a
+	mov     0xa5,   #0x02
+	mov     wcon,   #0x80
+	mov     r7,     #0x64
+	lcall   0x0575
+
+	; Wait for PIO to finish
+wait_saddr:
+	mov     a,     saddr
+	jb      a.1,   wait_saddr
+
+	; Wait for the host to finish reading
+wait_sync:
+	mov     r7,    #0x3c
+    lcall   0x057e
+    mov     a,     0xa4
+    jb      a.3,   wait_sync
+
+    ; Handle sending buffer to host
+    mov     r7,    #0x1
+    lcall   0x058c
+    setb    0x6c            ; 2d.4 = 1
+    lcall   0x05df
+    ret
+
+;
+; Copies HDD ID from ROM @ 0xf000 to XRAM @ 0x4000
+;
+copy_hddid:
+    ; Initialize the counter
+    clr     a
+    mov     r2,     a
+    mov     r3,     a
+copy_loop:
+    ; If r2 == 2 (counter == 0x0200), we're done
+    cjne    r2,     #0x02,      do_copy
+    ret
+do_copy:
+    ; Source DPTR = 0xF000 + counter
+    mov     dpl,    r3
+    mov     a,      r2
+    add     a,      #0xF0
+    mov     dph,    a
+    clr     a
+    movc    a,      @a+dptr
+    ; Read byte
+    mov     r4,     a
+
+    ; Destination DPTR = 0x4000 + counter
+    mov     dpl,    r3
+    mov     a,      r2
+    add     a,      #0x40
+    mov     dph,    a
+    mov     a,      r4
+    ; Store byte
+    movx    @dptr,  a
+
+    ; Increment 16-bit counter
+    inc     r3
+    mov     a,      r3
+    jnz     copy_loop
+    inc     r2
+    sjmp    copy_loop

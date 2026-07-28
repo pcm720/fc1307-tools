@@ -47,6 +47,19 @@ bin[0xB000:0xB000+len(code)] = code
 code=open('ata_c_sce_security_control.bin','rb').read()
 bin[0xB040:0xB040+len(code)] = code
 
+# Replace revision number and device name
+bin[0x3f00:0x3f00+0x8] = b'Rev 3.72'.ljust(0x8)
+bin[0x3f32:0x3f32+0x28] = b'FC1307A SD-ATA Adapter (PS2-compatible)'.ljust(0x28)
+
+
+hddid = open('hddid.bin','rb').read()
+if len(hddid) != 0x200:
+    print("Using nullkey HDD ID")
+    bin[0xf000:0xf1ff] = [0] * (0x1ff)
+else:
+    print("Using the provided HDD ID")
+    bin[0xf000:0xf1ff] = hddid
+
 
 # Fix checksums
 chsm_calc, chsm_stored = calc_chcksum(bin[0x0000:0x4000]);  bin[0x3FFE:0x4000] =bytes([chsm_calc&0xFF,(chsm_calc>>8)&0xFF])
