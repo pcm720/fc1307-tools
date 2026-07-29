@@ -1,6 +1,7 @@
 ; ATA_C_SCE_SECURITY_CONTROL implementation
+; HDD ID MUST be placed in the same page as the code
 	.area CODE (ABS)
-	.org 0xB040        ; Place code at 0xB040
+	.org 0xb200        ; Place code at 0xb200
 
 ; Constants
     wdtrst = 0xa6
@@ -38,9 +39,8 @@ ata_sce_identify_drive:
                             ; 2d.3 = 2b.1 & 0x1
     mov     c,     0x59
     mov     0x6b,  c
-    lcall   0x2015
 
-    ; Prepare the data by copying from ROM 0xf000 to XRAM 0x4000
+    ; Prepare the data by copying from ROM 0xb000 to XRAM 0x4000
     lcall   copy_hddid
     clr     a
 
@@ -95,40 +95,23 @@ wait_sync:
     ret
 
 ;
-; Copies HDD ID from ROM @ 0xf000 to XRAM @ 0x4000
+; Copies HDD ID from ROM @ 0xb000 to XRAM @ 0x4000
 ;
 copy_hddid:
-    ; Initialize the counter
-    clr     a
-    mov     r2,     a
-    mov     r3,     a
+    mov     r5,     #0xb0       ; source page high byte
+    mov     r6,     #0x40       ; destination page high byte
+    mov     dpl,    #0x00       ; shared low byte
+    mov     r2,     #0x02       ; 2 pages
+    mov     r3,     #0x00       ; 256 bytes per page
 copy_loop:
-    ; If r2 == 2 (counter == 0x0200), we're done
-    cjne    r2,     #0x02,      do_copy
-    ret
-do_copy:
-    ; Source DPTR = 0xF000 + counter
-    mov     dpl,    r3
-    mov     a,      r2
-    add     a,      #0xF0
-    mov     dph,    a
+    mov     dph,    r5          ; select source page
     clr     a
-    movc    a,      @a+dptr
-    ; Read byte
-    mov     r4,     a
-
-    ; Destination DPTR = 0x4000 + counter
-    mov     dpl,    r3
-    mov     a,      r2
-    add     a,      #0x40
-    mov     dph,    a
-    mov     a,      r4
-    ; Store byte
-    movx    @dptr,  a
-
-    ; Increment 16-bit counter
-    inc     r3
-    mov     a,      r3
-    jnz     copy_loop
-    inc     r2
-    sjmp    copy_loop
+    movc    a,      @a+dptr     ; read from ROM
+    mov     dph,    r6          ; select destination page
+    movx    @dptr,  a           ; write to XRAM
+    inc     dpl                 ; advance shared offset
+    djnz    r3,     copy_loop   ; inner loop (256 ×)
+    inc     r5                  ; next source page
+    inc     r6                  ; next destination page
+    djnz    r2,     copy_loop   ; outer loop (2 ×)
+    ret

@@ -7,7 +7,7 @@
 ;--------------------------------------------------
 
         .area CODE (ABS)
-        .org 0xB000        ; <-- where you want to place code
+        .org 0xAF00        ; <-- where you want to place code
 
 _checksum:
         ;------------------------------------------
@@ -24,7 +24,7 @@ _checksum:
         mov     R0, #0x00         ; 256-byte counter
         mov     R1, #0x02         ; 2 * 256 = 512 bytes
 
-        clr     A                 ; A = checksum 
+        clr     A                 ; A = checksum
 
 sum_loop:
         mov     R2, A             ; save surrent sum
@@ -50,10 +50,10 @@ sum_loop:
         mov     DPTR, #0x41FF
         movx    @DPTR, A
 
-        
+
         ;------------------------------------------
         ; Here we will set up registers
-        ; It was done @0x8226 but we used that code 
+        ; It was done @0x8226 but we used that code
         ; to make a call here
         ;------------------------------------------
         clr     A

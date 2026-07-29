@@ -32,7 +32,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Assemble our custom ATA handler
+# Assemble ata_c_sce_security_control.asm
 echo "Assembling ata_c_sce_security_control.asm..."
 sdas8051 -o ata_c_sce_security_control.rel ata_c_sce_security_control.asm
 if [ $? -ne 0 ]; then
