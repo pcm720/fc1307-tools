@@ -63,7 +63,7 @@ cd patches
 ./build_all.sh
 ```
 
-This will generate a patched firmware file `V3.72_patched.bin` in the `patches/bin` directory.
+This will generate a patched firmware file `V3.72_patched.bin` in the `patches/` directory.
 
 ### 3. Flash the Firmware
 
@@ -71,12 +71,12 @@ Flash the custom firmware using one of the provided scripts, depending on your a
 
 For adapters that work with 12-byte SCSI commands:
 ```bash
-sudo python3 fc1307_fw_write.py /dev/sdX patches/bin/V3.72_patched.bin
+sudo python3 fc1307_fw_write.py /dev/sdX patches/V3.72_patched.bin
 ```
 
 For adapters that require 16-byte SCSI commands:
 ```bash
-sudo python3 fc1307_fw_write_16.py /dev/sdX patches/bin/V3.72_patched.bin
+sudo python3 fc1307_fw_write_16.py /dev/sdX patches/V3.72_patched.bin
 ```
 
 Replace `/dev/sdX` with your actual device path.
