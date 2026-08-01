@@ -5,3 +5,4 @@
 | [ATA_FE_cmd.md](ATA_FE_cmd.md)                            | ATA `FEh` Subcommands list                |
 | [ATA_all.md](ATA_all.md)                                  | All handled ATA commands                  |
 | [FC1307_Firmware_Map.md](FC1307_Firmware_Map.md)          | LLM binary analysis of the V3.72 firmware |
+| [overclocking.md](overclocking.md)                        | Overclocking the FC1307A                  |
