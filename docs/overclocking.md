@@ -19,6 +19,11 @@ The FC1307A can be overclocked by connecting an external crystal oscillator:
 All tests were performed with `HDD Tester 1.1 dual` on a SCPH-70000 PS2 in the UDMA5 64MB read test with 32KB blocks.  
 The sweet spot seems to be 32 MHz.
 
+## PSX DESR
+
+The overclocked FC1307A (32 MHz) doesn't seem to be compatible with the PSX.  
+All UDMA transfers time out.
+
 ## Performing the mod
 
 Most of the available boards use an internal clock source.
